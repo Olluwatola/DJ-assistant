@@ -1,0 +1,15 @@
+{
+  "name": "dj-assistant",
+  "private": true,
+  "packageManager": "npm@11.9.0",
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "typecheck": "turbo typecheck"
+  },
+  "devDependencies": {
+    "cross-env": "^7.0.3",
+    "turbo": "latest"
+  }
+}

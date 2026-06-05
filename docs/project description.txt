@@ -1,0 +1,60 @@
+i want to create an web app that helps djs create new sets using
+spotify as the music listing source 
+
+the idea is the agent opens the app, have different playlists opened
+select songs from the playlits, and it becomes a set, they can move 
+track order, and each track would have details like bpm and key indicated 
+
+there are nuances right, the dj would have to provide a playlist 
+or number of playlists that contain all the songs they have, these 
+playlists would contain all the unique songs they have, these would be
+called base playlists
+for example in my case , my base playlists would be 7 playlists whose names are 
+1, 2, 3, 4, 5, 6, 7. these numbers are energy levels i think each song falls into 
+of course a song would always fall into one and at most one of the playlists
+
+because a song can only have one energy level right
+
+this is not a constraint we need to enforce , because of course users might not be as careful as
+i am
+
+
+then we will have another set of playlists that would be called 
+song boxes, these would be regular playlists, for example playlists defined by genres
+of course a single song could fall under multiple of these playlists
+and that is fine, and as a matter of fact encouraged 
+
+in the case where i have playlists called 
+
+afro elements 
+gqom
+fast paced 
+no lyrics
+edm
+
+if i want a gqom song with afro elements with no lyrics and fast paced
+i just select filter of the three playlists 
+
+
+NOTE: why do we need base playlists, without base playlists 
+we would have O(n)^2 or O(n)^3 problem when trying to get all the songs we need to consider
+as songs owned by these djs
+but with base songs, we know for each song mapping, we only need to go through all the base playlists
+get the unique songs, then for each unique song, we map which playlists it occurs under 
+
+then we can filter locally 
+
+this would not be a problem if we were saving the songs to our database
+but no we are not , we want the playlists to sync to spotify as much as possible 
+meaning if a song is removed from a playlist on spotify, it shouldnt 
+be showing under that playlist on our platform too 
+
+we should also note that a user should be able to filter by base playlists too
+
+so the core algorithm is that 
+
+we have a hashmap of unique songs amongst all base playlist songs 
+each item in the map has an array of the playlists it belongs to 
+
+so filtering would simply be an .include array function
+
