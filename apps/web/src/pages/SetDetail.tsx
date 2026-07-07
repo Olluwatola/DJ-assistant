@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { useParams, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { getSet } from "../api/sets";
-import { getAudioFeatures } from "../api/spotify";
+import { getAudioFeatures, type TrackLookup } from "../api/spotify";
 
 import PlatformBadge from "../components/PlatformBadge";
 import KeyDisplay from "../components/KeyDisplay";
@@ -18,16 +18,19 @@ export default function SetDetail() {
   });
 
   // Fetch fresh audio features for the tracks in this set
-  const trackIds = useMemo(
-    () => set?.tracks.filter((t) => t.platform === "spotify").map((t) => t.platformTrackId) ?? [],
+  const trackLookups = useMemo<TrackLookup[]>(
+    () =>
+      set?.tracks
+        .filter((t) => t.platform === "spotify")
+        .map((t) => ({ id: t.platformTrackId, title: t.snapshotTitle, artist: t.snapshotArtist })) ?? [],
     [set]
   );
 
   const { data: featuresData } = useQuery({
-    queryKey: ["set-audio-features", id, trackIds.join(",")],
-    queryFn: () => getAudioFeatures(trackIds),
-    enabled: trackIds.length > 0,
-    staleTime: 20 * 60 * 1000,
+    queryKey: ["set-audio-features", id, trackLookups.map((t) => t.id).join(",")],
+    queryFn: () => getAudioFeatures(trackLookups),
+    enabled: trackLookups.length > 0,
+    staleTime: Infinity,
   });
 
   const audioFeaturesMap = useMemo(() => {

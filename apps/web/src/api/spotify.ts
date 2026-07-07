@@ -36,6 +36,6 @@ export interface TrackLookup {
 }
 
 export async function getAudioFeatures(tracks: TrackLookup[]): Promise<AudioFeatures[]> {
-  const { data } = await client.post<AudioFeatures[]>("/spotify/audio-features", { tracks });
-  return data;
+  const { getAudioFeaturesFromCache } = await import("./bpm");
+  return getAudioFeaturesFromCache(tracks);
 }

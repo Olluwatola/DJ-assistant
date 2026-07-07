@@ -5,6 +5,7 @@ import type { BpmRange } from "./FilterPanel";
 interface Props {
   tracks: Track[];
   isLoading: boolean;
+  isFeaturesLoading: boolean;
   selectedFilterIds: string[];
   bpmRange: BpmRange;
   selectedKeys: number[];
@@ -23,11 +24,18 @@ function getEnergyLabel(track: Track, designations: PlaylistDesignation[]): stri
   return null;
 }
 
+function getSongBoxLabels(track: Track, designations: PlaylistDesignation[]): string[] {
+  return designations
+    .filter((d) => d.type === "song_box" && track.playlistIds.includes(d.platformPlaylistId))
+    .map((d) => d.playlistName);
+}
+
 function applyFilters(
   tracks: Track[],
   selectedFilterIds: string[],
   bpmRange: BpmRange,
-  selectedKeys: number[]
+  selectedKeys: number[],
+  isFeaturesLoading: boolean
 ): Track[] {
   return tracks.filter((t) => {
     // Playlist AND filter
@@ -35,9 +43,14 @@ function applyFilters(
       return false;
     }
 
-    // BPM range — only applied when the track has loaded audio features
-    const bpm = t.audioFeatures?.bpm;
-    if (bpm !== null && bpm !== undefined) {
+    // Skip BPM/key filters while audio features are still loading to avoid
+    // hiding all tracks when the query transitions to a new key with no cached data
+    if (isFeaturesLoading) return true;
+
+    // BPM range — when a range is active, tracks without BPM data are excluded
+    if (bpmRange.min !== null || bpmRange.max !== null) {
+      const bpm = t.audioFeatures?.bpm;
+      if (bpm === null || bpm === undefined) return false;
       if (bpmRange.min !== null && bpm < bpmRange.min) return false;
       if (bpmRange.max !== null && bpm > bpmRange.max) return false;
     }
@@ -56,13 +69,14 @@ function applyFilters(
 export default function TrackBrowser({
   tracks,
   isLoading,
+  isFeaturesLoading,
   selectedFilterIds,
   bpmRange,
   selectedKeys,
   designations,
   onAddTrack,
 }: Props) {
-  const filtered = applyFilters(tracks, selectedFilterIds, bpmRange, selectedKeys);
+  const filtered = applyFilters(tracks, selectedFilterIds, bpmRange, selectedKeys, isFeaturesLoading);
 
   const isFiltered =
     selectedFilterIds.length > 0 ||
@@ -111,6 +125,7 @@ export default function TrackBrowser({
           key={track.namespaceId}
           track={track}
           energyLabel={getEnergyLabel(track, designations)}
+          songBoxLabels={getSongBoxLabels(track, designations)}
           onAdd={() => onAddTrack(track)}
         />
       ))}

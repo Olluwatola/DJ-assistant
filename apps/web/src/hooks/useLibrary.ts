@@ -95,7 +95,7 @@ export function useLibrary() {
     queryKey: ["audio-features", [...allTrackIds].sort().join(",")],
     queryFn: () => spotifyApi.getAudioFeatures(trackLookups),
     enabled: trackLookups.length > 0,
-    staleTime: STALE,
+    staleTime: Infinity,
   });
 
   const tracks: Track[] = useMemo(() => {

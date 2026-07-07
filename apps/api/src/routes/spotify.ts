@@ -1,16 +1,13 @@
 import { Router, Request, Response, NextFunction } from "express";
 import axios from "axios";
 import jwt from "jsonwebtoken";
-import { z } from "zod";
 import { requireAuth, AuthRequest } from "../middleware/requireAuth";
 import { PlatformConnection } from "../models/PlatformConnection";
 import {
   getAllUserPlaylists,
   getAllPlaylistTracks,
-  batchAudioFeatures,
   getSpotifyProfile,
 } from "../services/spotifyClient";
-import { batchBpmLookup } from "../services/getSongBpmClient";
 import { config } from "../config";
 
 const router = Router();
@@ -146,42 +143,6 @@ router.get(
         durationMs: t!.duration_ms,
       }));
       res.json(tracks);
-    } catch (err) {
-      next(err);
-    }
-  }
-);
-
-router.post(
-  "/audio-features",
-  requireAuth,
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const userId = (req as AuthRequest).userId;
-      const { tracks } = z
-        .object({
-          tracks: z.array(z.object({ id: z.string(), title: z.string(), artist: z.string() })),
-        })
-        .parse(req.body);
-
-      // Try Spotify first — 403s gracefully since their endpoint was retired
-      const spotifyFeatures = await batchAudioFeatures(userId, tracks.map((t) => t.id));
-      const spotifyMap = new Map(spotifyFeatures.map((f) => [f.id, f]));
-
-      // Tracks Spotify didn't cover go to GetSongBPM (cache-first, then API)
-      const needsLookup = tracks.filter((t) => !spotifyMap.get(t.id)?.tempo);
-      const bpmMap = await batchBpmLookup(needsLookup);
-
-      const result = tracks.map((t) => {
-        const sf = spotifyMap.get(t.id);
-        if (sf?.tempo) {
-          return { trackId: t.id, bpm: sf.tempo, key: sf.key ?? null, mode: sf.mode ?? null };
-        }
-        const g = bpmMap.get(t.id);
-        return { trackId: t.id, bpm: g?.bpm ?? null, key: g?.key ?? null, mode: g?.mode ?? null };
-      });
-
-      res.json(result);
     } catch (err) {
       next(err);
     }

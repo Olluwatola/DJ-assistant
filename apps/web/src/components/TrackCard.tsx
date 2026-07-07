@@ -6,9 +6,10 @@ export interface TrackCardProps {
   track: Track;
   onAdd: () => void;
   energyLabel?: string | null;
+  songBoxLabels?: string[];
 }
 
-export default function TrackCard({ track, onAdd, energyLabel }: TrackCardProps) {
+export default function TrackCard({ track, onAdd, energyLabel, songBoxLabels }: TrackCardProps) {
   return (
     <div className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-gray-800 group transition-colors">
       {track.albumArt ? (
@@ -20,11 +21,19 @@ export default function TrackCard({ track, onAdd, energyLabel }: TrackCardProps)
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-white truncate">{track.title}</p>
         <p className="text-xs text-gray-400 truncate">{track.artist}</p>
-        <div className="flex items-center gap-2 mt-1">
+        <div className="flex items-center gap-2 mt-1 flex-wrap">
           <PlatformBadge platform={track.platform} />
           {energyLabel && (
             <span className="text-xs text-blue-400">{energyLabel}</span>
           )}
+          {songBoxLabels?.map((label) => (
+            <span
+              key={label}
+              className="text-xs px-1.5 py-0.5 rounded bg-purple-900/60 text-purple-300 leading-none"
+            >
+              {label}
+            </span>
+          ))}
         </div>
       </div>
 

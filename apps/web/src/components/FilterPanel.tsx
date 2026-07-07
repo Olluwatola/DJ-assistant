@@ -15,7 +15,6 @@ interface Props {
   selectedKeys: number[];
   onToggleKey: (key: number) => void;
   isFeaturesLoading: boolean;
-  audioFeaturesAvailable: boolean;
   onClearAll: () => void;
 }
 
@@ -28,7 +27,6 @@ export default function FilterPanel({
   selectedKeys,
   onToggleKey,
   isFeaturesLoading,
-  audioFeaturesAvailable,
   onClearAll,
 }: Props) {
   const base = designations.filter((d) => d.type === "base");
@@ -107,46 +105,33 @@ export default function FilterPanel({
             </button>
           )}
         </div>
-        {!isFeaturesLoading && !audioFeaturesAvailable ? (
-          <p className="text-xs text-gray-600 leading-relaxed">
-            Unavailable — Spotify removed the audio features API for development apps.{" "}
-            <a
-              href="https://developer.spotify.com/documentation/web-api/concepts/quota-modes"
-              target="_blank"
-              rel="noreferrer"
-              className="text-gray-500 underline hover:text-gray-300"
-            >
-              Request extended access
-            </a>{" "}
-            to enable BPM &amp; key filters.
-          </p>
-        ) : (
-          <div className="flex items-center gap-2">
-            <input
-              type="number"
-              min={0}
-              max={300}
-              placeholder="min"
-              value={bpmRange.min ?? ""}
-              onChange={(e) =>
-                onBpmChange({ ...bpmRange, min: e.target.value === "" ? null : Number(e.target.value) })
-              }
-              className="w-full px-2 py-1 bg-gray-800 border border-gray-700 rounded text-xs text-white placeholder-gray-600 focus:outline-none focus:border-green-500"
-            />
-            <span className="text-gray-600 text-xs flex-shrink-0">–</span>
-            <input
-              type="number"
-              min={0}
-              max={300}
-              placeholder="max"
-              value={bpmRange.max ?? ""}
-              onChange={(e) =>
-                onBpmChange({ ...bpmRange, max: e.target.value === "" ? null : Number(e.target.value) })
-              }
-              className="w-full px-2 py-1 bg-gray-800 border border-gray-700 rounded text-xs text-white placeholder-gray-600 focus:outline-none focus:border-green-500"
-            />
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          <input
+            type="number"
+            min={0}
+            max={300}
+            placeholder="min"
+            value={bpmRange.min ?? ""}
+            onChange={(e) =>
+              onBpmChange({ ...bpmRange, min: e.target.value === "" ? null : Number(e.target.value) })
+            }
+            disabled={isFeaturesLoading}
+            className="w-full px-2 py-1 bg-gray-800 border border-gray-700 rounded text-xs text-white placeholder-gray-600 focus:outline-none focus:border-green-500 disabled:opacity-40 disabled:cursor-not-allowed"
+          />
+          <span className="text-gray-600 text-xs flex-shrink-0">–</span>
+          <input
+            type="number"
+            min={0}
+            max={300}
+            placeholder="max"
+            value={bpmRange.max ?? ""}
+            onChange={(e) =>
+              onBpmChange({ ...bpmRange, max: e.target.value === "" ? null : Number(e.target.value) })
+            }
+            disabled={isFeaturesLoading}
+            className="w-full px-2 py-1 bg-gray-800 border border-gray-700 rounded text-xs text-white placeholder-gray-600 focus:outline-none focus:border-green-500 disabled:opacity-40 disabled:cursor-not-allowed"
+          />
+        </div>
       </div>
 
       {/* Key Filter */}
@@ -156,31 +141,28 @@ export default function FilterPanel({
           {selectedKeys.length > 0 && (
             <button
               onClick={() => selectedKeys.forEach((k) => onToggleKey(k))}
-              className="text-xs text-gray-600 hover:text-white"
+              disabled={isFeaturesLoading}
+              className="text-xs text-gray-600 hover:text-white disabled:pointer-events-none"
             >
               reset
             </button>
           )}
         </div>
-        {!isFeaturesLoading && !audioFeaturesAvailable ? (
-          <p className="text-xs text-gray-600">See note above.</p>
-        ) : (
-          <div className="grid grid-cols-4 gap-1">
-            {NOTE_NAMES.map((note, idx) => (
-              <button
-                key={idx}
-                onClick={() => onToggleKey(idx)}
-                className={`px-1 py-1 rounded text-xs font-mono transition-colors ${
-                  selectedKeys.includes(idx)
-                    ? "bg-green-600 text-white"
-                    : "bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white"
-                }`}
-              >
-                {note}
-              </button>
-            ))}
-          </div>
-        )}
+        <div className={`grid grid-cols-4 gap-1 ${isFeaturesLoading ? "opacity-40 pointer-events-none" : ""}`}>
+          {NOTE_NAMES.map((note, idx) => (
+            <button
+              key={idx}
+              onClick={() => onToggleKey(idx)}
+              className={`px-1 py-1 rounded text-xs font-mono transition-colors ${
+                selectedKeys.includes(idx)
+                  ? "bg-green-600 text-white"
+                  : "bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white"
+              }`}
+            >
+              {note}
+            </button>
+          ))}
+        </div>
       </div>
 
       {base.length === 0 && songBoxes.length === 0 && (

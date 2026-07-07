@@ -17,7 +17,6 @@ export default function Builder() {
   const [selectedKeys, setSelectedKeys] = useState<number[]>([]);
 
   const { tracks, isLoading, isFeaturesLoading, refresh } = useLibrary();
-  const audioFeaturesAvailable = !isFeaturesLoading && tracks.some((t) => t.audioFeatures !== null);
   const { data: designations } = useDesignations();
   const activeSet = useActiveSet();
 
@@ -96,13 +95,13 @@ export default function Builder() {
           selectedKeys={selectedKeys}
           onToggleKey={toggleKey}
           isFeaturesLoading={isFeaturesLoading}
-          audioFeaturesAvailable={audioFeaturesAvailable}
           onClearAll={clearAll}
         />
 
         <TrackBrowser
           tracks={tracks}
           isLoading={isLoading}
+          isFeaturesLoading={isFeaturesLoading}
           selectedFilterIds={selectedFilterIds}
           bpmRange={bpmRange}
           selectedKeys={selectedKeys}
@@ -121,6 +120,20 @@ export default function Builder() {
           onSave={activeSet.save}
         />
       </div>
+
+      <footer className="px-6 py-2 border-t border-gray-800 flex-shrink-0 text-center">
+        <span className="text-xs text-gray-600">
+          BPM &amp; key data provided by{" "}
+          <a
+            href="https://getsongbpm.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-gray-400 underline"
+          >
+            GetSongBPM
+          </a>
+        </span>
+      </footer>
     </div>
   );
 }
