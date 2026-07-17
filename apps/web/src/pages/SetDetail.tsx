@@ -1,8 +1,9 @@
-import { useMemo } from "react";
+ import { useMemo } from "react";
 import { useParams, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { getSet } from "../api/sets";
 import { getAudioFeatures, type TrackLookup } from "../api/spotify";
+import { useTrackDetailMode } from "../hooks/useTrackData";
 
 import PlatformBadge from "../components/PlatformBadge";
 import KeyDisplay from "../components/KeyDisplay";
@@ -26,10 +27,12 @@ export default function SetDetail() {
     [set]
   );
 
+  const { data: trackDetailMode } = useTrackDetailMode();
+
   const { data: featuresData } = useQuery({
-    queryKey: ["set-audio-features", id, trackLookups.map((t) => t.id).join(",")],
-    queryFn: () => getAudioFeatures(trackLookups),
-    enabled: trackLookups.length > 0,
+    queryKey: ["set-audio-features", id, trackDetailMode, trackLookups.map((t) => t.id).join(",")],
+    queryFn: () => getAudioFeatures(trackLookups, trackDetailMode!),
+    enabled: trackLookups.length > 0 && trackDetailMode !== undefined,
     staleTime: Infinity,
   });
 

@@ -1,5 +1,6 @@
-import type { AudioFeatures } from "@dj-assistant/types";
+import type { AudioFeatures, TrackDetailMode } from "@dj-assistant/types";
 import type { TrackLookup } from "./spotify";
+import { getCachedAudioFeatures } from "./trackData";
 
 const LS_KEY = "dja-bpm-cache-v2";
 const RC = "https://api.reccobeats.com/v1";
@@ -81,11 +82,30 @@ async function fetchFromReccoBeats(tracks: TrackLookup[]): Promise<AudioFeatures
 
 // ── Deezer fallback (BPM only) ──────────────────────────────────────────────
 
+const DEEZER_RETRIES = 3;
+const DEEZER_RETRY_BASE_MS = 500;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function fetchWithRetry(url: string): Promise<Response | null> {
+  for (let attempt = 0; attempt < DEEZER_RETRIES; attempt++) {
+    try {
+      return await fetch(url);
+    } catch {
+      if (attempt === DEEZER_RETRIES - 1) return null;
+      await sleep(DEEZER_RETRY_BASE_MS * 2 ** attempt);
+    }
+  }
+  return null;
+}
+
 async function getDeezerBpm(track: TrackLookup): Promise<number | null> {
   try {
     const q = encodeURIComponent(`artist:"${track.artist}" track:"${track.title}"`);
-    const searchRes = await fetch(`/deezer/search/track?q=${q}&limit=5`);
-    if (!searchRes.ok) return null;
+    const searchRes = await fetchWithRetry(`/deezer/search/track?q=${q}&limit=5`);
+    if (!searchRes?.ok) return null;
     const { data = [] }: { data: DeezerSearchResult[] } = await searchRes.json();
 
     const titleLow = track.title.toLowerCase();
@@ -97,8 +117,8 @@ async function getDeezerBpm(track: TrackLookup): Promise<number | null> {
 
     if (!match) return null;
 
-    const detailRes = await fetch(`/deezer/track/${match.id}`);
-    if (!detailRes.ok) return null;
+    const detailRes = await fetchWithRetry(`/deezer/track/${match.id}`);
+    if (!detailRes?.ok) return null;
     const detail: { bpm: number } = await detailRes.json();
     return detail.bpm > 0 ? Math.round(detail.bpm) : null;
   } catch {
@@ -108,7 +128,7 @@ async function getDeezerBpm(track: TrackLookup): Promise<number | null> {
 
 async function fetchDeezerFallback(tracks: TrackLookup[]): Promise<AudioFeatures[]> {
   const results: AudioFeatures[] = new Array(tracks.length);
-  const CONCURRENCY = 3;
+  const CONCURRENCY = 1;
   let next = 0;
 
   async function worker() {
@@ -125,7 +145,10 @@ async function fetchDeezerFallback(tracks: TrackLookup[]): Promise<AudioFeatures
 
 // ── Public API ──────────────────────────────────────────────────────────────
 
-export async function getAudioFeaturesFromCache(tracks: TrackLookup[]): Promise<AudioFeatures[]> {
+export async function getAudioFeaturesFromCache(
+  tracks: TrackLookup[],
+  mode: TrackDetailMode
+): Promise<AudioFeatures[]> {
   const store = loadStore();
   const hits: AudioFeatures[] = [];
   const misses: TrackLookup[] = [];
@@ -140,21 +163,47 @@ export async function getAudioFeaturesFromCache(tracks: TrackLookup[]): Promise<
   }
 
   if (misses.length > 0) {
-    const rcResults = await fetchFromReccoBeats(misses);
-
-    const rcMisses = misses.filter((m) => rcResults.find((r) => r.trackId === m.id)?.bpm === null);
-    const deezerResults = rcMisses.length > 0 ? await fetchDeezerFallback(rcMisses) : [];
-    const deezerMap = new Map(deezerResults.map((r) => [r.trackId, r]));
-
     let dirty = false;
-    for (const f of rcResults) {
-      const result = f.bpm !== null ? f : (deezerMap.get(f.trackId) ?? f);
-      if (result.bpm !== null) {
-        store[result.trackId] = { bpm: result.bpm, key: result.key, mode: result.mode };
+
+    // The permanent server cache (populated only by manually-triggered chosic
+    // runs) is always consulted first, regardless of mode.
+    const serverResults = await getCachedAudioFeatures(misses.map((m) => m.id));
+    const serverMap = new Map(serverResults.map((r) => [r.trackId, r]));
+    for (const r of serverResults) {
+      if (r.bpm !== null) {
+        store[r.trackId] = { bpm: r.bpm, key: r.key, mode: r.mode };
         dirty = true;
+        hits.push(r);
       }
-      hits.push(result);
     }
+
+    const stillMissing = misses.filter((m) => serverMap.get(m.id)?.bpm === null || !serverMap.has(m.id));
+
+    if (mode === "chosic") {
+      // chosic never runs automatically - anything not already in the
+      // permanent cache simply has no data until someone runs it manually.
+      for (const m of stillMissing) {
+        hits.push({ trackId: m.id, bpm: null, key: null, mode: null });
+      }
+    } else {
+      const rcResults = await fetchFromReccoBeats(stillMissing);
+
+      const rcMisses = stillMissing.filter(
+        (m) => rcResults.find((r) => r.trackId === m.id)?.bpm === null
+      );
+      const deezerResults = rcMisses.length > 0 ? await fetchDeezerFallback(rcMisses) : [];
+      const deezerMap = new Map(deezerResults.map((r) => [r.trackId, r]));
+
+      for (const f of rcResults) {
+        const result = f.bpm !== null ? f : (deezerMap.get(f.trackId) ?? f);
+        if (result.bpm !== null) {
+          store[result.trackId] = { bpm: result.bpm, key: result.key, mode: result.mode };
+          dirty = true;
+        }
+        hits.push(result);
+      }
+    }
+
     if (dirty) saveStore(store);
   }
 

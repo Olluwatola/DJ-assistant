@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useDesignations } from "./useDesignations";
+import { useTrackDetailMode } from "./useTrackData";
 import * as spotifyApi from "../api/spotify";
 import type { Track } from "@dj-assistant/types";
 
@@ -9,6 +10,7 @@ const STALE = 20 * 60 * 1000;
 export function useLibrary() {
   const qc = useQueryClient();
   const { data: designations, isLoading: desLoading } = useDesignations();
+  const { data: trackDetailMode } = useTrackDetailMode();
 
   const basePlaylistIds = useMemo(
     () => designations?.filter((d) => d.type === "base").map((d) => d.platformPlaylistId) ?? [],
@@ -132,9 +134,9 @@ export function useLibrary() {
 
   const baseFeaturesQuery = useQuery({
     // Use a stable sorted copy for the key so it doesn't vary with insertion order
-    queryKey: ["audio-features", "base", [...allTrackIds].sort().join(",")],
-    queryFn: () => spotifyApi.getAudioFeatures(trackLookups),
-    enabled: trackLookups.length > 0,
+    queryKey: ["audio-features", "base", trackDetailMode, [...allTrackIds].sort().join(",")],
+    queryFn: () => spotifyApi.getAudioFeatures(trackLookups, trackDetailMode!),
+    enabled: trackLookups.length > 0 && trackDetailMode !== undefined,
     staleTime: Infinity,
   });
   const { data: audioFeaturesData, isLoading: featuresLoading } = baseFeaturesQuery;
@@ -145,10 +147,17 @@ export function useLibrary() {
     !baseFeaturesQuery.isFetching &&
     (baseFeaturesQuery.isSuccess || baseFeaturesQuery.isError || trackLookups.length === 0);
 
+  // In "chosic" mode there's no automatic fallback at all, so orphaned tracks
+  // (never covered by a manual, base-playlist-scoped chosic run) must never
+  // be fetched — this query simply never runs in that mode.
   const orphanFeaturesQuery = useQuery({
-    queryKey: ["audio-features", "orphan", [...orphanTrackIds].sort().join(",")],
-    queryFn: () => spotifyApi.getAudioFeatures(orphanTrackLookups),
-    enabled: orphanTrackLookups.length > 0 && baseFeaturesSettled,
+    queryKey: ["audio-features", "orphan", trackDetailMode, [...orphanTrackIds].sort().join(",")],
+    queryFn: () => spotifyApi.getAudioFeatures(orphanTrackLookups, trackDetailMode!),
+    enabled:
+      orphanTrackLookups.length > 0 &&
+      baseFeaturesSettled &&
+      trackDetailMode !== undefined &&
+      trackDetailMode !== "chosic",
     staleTime: Infinity,
   });
 

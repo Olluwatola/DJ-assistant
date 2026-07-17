@@ -1,10 +1,12 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useSearch, useNavigate } from "@tanstack/react-router";
 import { getStatus, getPlaylists } from "../api/spotify";
 import client from "../api/client";
 import { useDesignations, useUpsertDesignation, useDeleteDesignation } from "../hooks/useDesignations";
+import { useMissingTrackData, useTrackDetailMode, useSetTrackDetailMode } from "../hooks/useTrackData";
 import PlaylistDesignationRow from "../components/PlaylistDesignationRow";
+import ChosicRunModal from "../components/ChosicRunModal";
 import { clearToken } from "../lib/auth";
 import type { DesignationType } from "@dj-assistant/types";
 
@@ -35,8 +37,14 @@ export default function Settings() {
   const upsert = useUpsertDesignation();
   const remove = useDeleteDesignation();
 
+  const { data: missingData } = useMissingTrackData();
+  const { data: trackDetailMode } = useTrackDetailMode();
+  const setTrackDetailMode = useSetTrackDetailMode();
+  const [chosicModalOpen, setChosicModalOpen] = useState(false);
+
   const baseDesignations = designations?.filter((d) => d.type === "base") ?? [];
   const songBoxDesignations = designations?.filter((d) => d.type === "song_box") ?? [];
+  const missingByPlaylist = new Map(missingData?.map((m) => [m.playlistId, m.missingCount]) ?? []);
 
   function handleDesignate(playlist: { id: string; name: string }, type: DesignationType) {
     upsert.mutate({
@@ -123,14 +131,32 @@ export default function Settings() {
         {(baseDesignations.length > 0 || songBoxDesignations.length > 0) && (
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-gray-900 rounded-xl p-4">
-              <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Base Playlists</p>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs text-gray-500 uppercase tracking-wider">Base Playlists</p>
+                <button
+                  onClick={() => setChosicModalOpen(true)}
+                  disabled={baseDesignations.length === 0}
+                  title={baseDesignations.length === 0 ? "Designate a base playlist first" : undefined}
+                  className="text-xs text-blue-400 hover:text-blue-300 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Fetch via Chosic
+                </button>
+              </div>
               {baseDesignations.length === 0 ? (
                 <p className="text-sm text-gray-600">None designated</p>
               ) : (
                 <ul className="space-y-1">
-                  {baseDesignations.map((d) => (
-                    <li key={d._id} className="text-sm text-blue-300 truncate">{d.playlistName}</li>
-                  ))}
+                  {baseDesignations.map((d) => {
+                    const missing = missingByPlaylist.get(d.platformPlaylistId);
+                    return (
+                      <li key={d._id} className="text-sm text-blue-300 truncate flex items-center gap-2">
+                        <span className="truncate">{d.playlistName}</span>
+                        {!!missing && (
+                          <span className="text-xs text-amber-400 flex-shrink-0">{missing} missing</span>
+                        )}
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
             </div>
@@ -148,6 +174,39 @@ export default function Settings() {
             </div>
           </div>
         )}
+
+        {/* Track detail source */}
+        <section>
+          <h2 className="text-lg font-semibold mb-4">Track Detail Source</h2>
+          <div className="bg-gray-900 rounded-xl p-4 flex items-center gap-2">
+            {(["deezer_reccobeats", "chosic"] as const).map((mode) => (
+              <button
+                key={mode}
+                onClick={() => setTrackDetailMode.mutate(mode)}
+                disabled={setTrackDetailMode.isPending}
+                className={`text-xs px-3 py-1.5 rounded-full border transition-colors disabled:opacity-50 ${
+                  trackDetailMode === mode
+                    ? "bg-blue-600 border-blue-500 text-white"
+                    : "border-gray-600 text-gray-400 hover:border-blue-500 hover:text-blue-400"
+                }`}
+              >
+                {mode === "chosic" ? "Chosic (manual)" : "Deezer + ReccoBeats (auto)"}
+              </button>
+            ))}
+          </div>
+          {trackDetailMode === "chosic" && (
+            <p className="text-xs text-gray-500 mt-2">
+              Automatic bpm/key lookup is off. Only tracks fetched via "Fetch via Chosic" above will
+              show data — orphaned tracks will never be fetched automatically in this mode.
+            </p>
+          )}
+        </section>
+
+        <ChosicRunModal
+          open={chosicModalOpen}
+          onClose={() => setChosicModalOpen(false)}
+          basePlaylists={baseDesignations}
+        />
 
         {/* Playlist designation list */}
         {status?.connected && (

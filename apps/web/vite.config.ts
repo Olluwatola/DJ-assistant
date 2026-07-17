@@ -13,6 +13,8 @@ export default defineConfig({
       "/deezer": {
         target: "https://api.deezer.com",
         changeOrigin: true,
+        timeout: 8000,
+        proxyTimeout: 8000,
         rewrite: (path) => path.replace(/^\/deezer/, ""),
       },
     },

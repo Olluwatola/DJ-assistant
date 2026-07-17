@@ -4,3 +4,5 @@ dist/
 .env.local
 *.js.map
 .turbo/
+.gstack/
+apps/api/output/

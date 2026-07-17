@@ -1,5 +1,5 @@
 import client from "./client";
-import type { Playlist, AudioFeatures, CreatePlaylistResponse } from "@dj-assistant/types";
+import type { Playlist, AudioFeatures, CreatePlaylistResponse, TrackDetailMode } from "@dj-assistant/types";
 
 export interface SpotifyStatus {
   connected: boolean;
@@ -35,9 +35,12 @@ export interface TrackLookup {
   artist: string;
 }
 
-export async function getAudioFeatures(tracks: TrackLookup[]): Promise<AudioFeatures[]> {
+export async function getAudioFeatures(
+  tracks: TrackLookup[],
+  mode: TrackDetailMode
+): Promise<AudioFeatures[]> {
   const { getAudioFeaturesFromCache } = await import("./bpm");
-  return getAudioFeaturesFromCache(tracks);
+  return getAudioFeaturesFromCache(tracks, mode);
 }
 
 export async function createPlaylistFromTracks(trackIds: string[]): Promise<CreatePlaylistResponse> {

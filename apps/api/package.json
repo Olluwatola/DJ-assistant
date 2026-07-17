@@ -7,7 +7,8 @@
     "typecheck": "tsc --noEmit",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "chosic:export": "tsx src/scripts/chosicExport.ts"
   },
   "dependencies": {
     "@dj-assistant/types": "*",
@@ -18,6 +19,7 @@
     "express": "^4.18.0",
     "jsonwebtoken": "^9.0.0",
     "mongoose": "^8.0.0",
+    "playwright": "^1.48.0",
     "zod": "^3.22.0"
   },
   "devDependencies": {

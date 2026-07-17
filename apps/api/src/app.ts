@@ -5,6 +5,7 @@ import authRouter from "./routes/auth";
 import spotifyRouter from "./routes/spotify";
 import designationsRouter from "./routes/designations";
 import setsRouter from "./routes/sets";
+import trackDataRouter from "./routes/trackData";
 import { errorHandler } from "./middleware/errorHandler";
 
 const app = express();
@@ -16,6 +17,7 @@ app.use("/api/auth", authRouter);
 app.use("/api/spotify", spotifyRouter);
 app.use("/api/designations", designationsRouter);
 app.use("/api/sets", setsRouter);
+app.use("/api/track-data", trackDataRouter);
 
 app.get("/api/health", (_req, res) => res.json({ status: "ok" }));
 
