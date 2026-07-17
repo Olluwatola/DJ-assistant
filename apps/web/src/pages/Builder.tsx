@@ -5,7 +5,9 @@ import { useActiveSet } from "../hooks/useActiveSet";
 import { useDesignations } from "../hooks/useDesignations";
 import FilterPanel, { type BpmRange } from "../components/FilterPanel";
 import TrackBrowser from "../components/TrackBrowser";
+import OrphanedTracksPanel from "../components/OrphanedTracksPanel";
 import SetPanel from "../components/SetPanel";
+import Resizer from "../components/Resizer";
 import { clearToken } from "../lib/auth";
 import type { AudioFeatures } from "@dj-assistant/types";
 
@@ -15,8 +17,19 @@ export default function Builder() {
   const [selectedFilterIds, setSelectedFilterIds] = useState<string[]>([]);
   const [bpmRange, setBpmRange] = useState<BpmRange>({ min: null, max: null });
   const [selectedKeys, setSelectedKeys] = useState<number[]>([]);
+  const [setPanelWidth, setSetPanelWidth] = useState(420);
 
-  const { tracks, isLoading, isFeaturesLoading, refresh } = useLibrary();
+  const SET_PANEL_MIN_WIDTH = 300;
+  const SET_PANEL_MAX_WIDTH = 720;
+
+  function handleSetPanelResize(deltaX: number) {
+    // Dragging left grows the set panel, dragging right shrinks it
+    setSetPanelWidth((w) =>
+      Math.min(SET_PANEL_MAX_WIDTH, Math.max(SET_PANEL_MIN_WIDTH, w - deltaX))
+    );
+  }
+
+  const { tracks, isLoading, isFeaturesLoading, orphanedTracks, isOrphanFeaturesLoading, refresh } = useLibrary();
   const { data: designations } = useDesignations();
   const activeSet = useActiveSet();
 
@@ -98,22 +111,33 @@ export default function Builder() {
           onClearAll={clearAll}
         />
 
-        <TrackBrowser
-          tracks={tracks}
-          isLoading={isLoading}
-          isFeaturesLoading={isFeaturesLoading}
-          selectedFilterIds={selectedFilterIds}
-          bpmRange={bpmRange}
-          selectedKeys={selectedKeys}
-          designations={designations ?? []}
-          onAddTrack={activeSet.addTrack}
-        />
+        <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
+          <OrphanedTracksPanel
+            tracks={orphanedTracks}
+            designations={designations ?? []}
+            isFeaturesLoading={isOrphanFeaturesLoading}
+            onAddTrack={activeSet.addTrack}
+          />
+          <TrackBrowser
+            tracks={tracks}
+            isLoading={isLoading}
+            isFeaturesLoading={isFeaturesLoading}
+            selectedFilterIds={selectedFilterIds}
+            bpmRange={bpmRange}
+            selectedKeys={selectedKeys}
+            designations={designations ?? []}
+            onAddTrack={activeSet.addTrack}
+          />
+        </div>
+
+        <Resizer onResize={handleSetPanelResize} />
 
         <SetPanel
           name={activeSet.name}
           tracks={activeSet.tracks}
           isDirty={activeSet.isDirty}
           audioFeaturesMap={audioFeaturesMap}
+          width={setPanelWidth}
           onNameChange={activeSet.setName}
           onReorder={activeSet.reorderTracks}
           onRemove={activeSet.removeTrack}

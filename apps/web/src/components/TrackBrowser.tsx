@@ -1,6 +1,7 @@
 import type { Track, PlaylistDesignation } from "@dj-assistant/types";
 import TrackCard from "./TrackCard";
 import type { BpmRange } from "./FilterPanel";
+import { getEnergyLabel, getSongBoxLabels } from "../lib/trackLabels";
 
 interface Props {
   tracks: Track[];
@@ -11,23 +12,6 @@ interface Props {
   selectedKeys: number[];
   designations: PlaylistDesignation[];
   onAddTrack: (track: Track) => void;
-}
-
-function getEnergyLabel(track: Track, designations: PlaylistDesignation[]): string | null {
-  const baseDes = designations.filter((d) => d.type === "base");
-  for (const d of baseDes) {
-    if (track.playlistIds.includes(d.platformPlaylistId)) {
-      if (/^\d+$/.test(d.playlistName.trim())) return `Energy ${d.playlistName.trim()}`;
-      return d.playlistName;
-    }
-  }
-  return null;
-}
-
-function getSongBoxLabels(track: Track, designations: PlaylistDesignation[]): string[] {
-  return designations
-    .filter((d) => d.type === "song_box" && track.playlistIds.includes(d.platformPlaylistId))
-    .map((d) => d.playlistName);
 }
 
 function applyFilters(
@@ -126,6 +110,7 @@ export default function TrackBrowser({
           track={track}
           energyLabel={getEnergyLabel(track, designations)}
           songBoxLabels={getSongBoxLabels(track, designations)}
+          featuresLoading={isFeaturesLoading}
           onAdd={() => onAddTrack(track)}
         />
       ))}

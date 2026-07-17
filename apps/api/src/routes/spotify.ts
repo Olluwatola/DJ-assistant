@@ -7,8 +7,11 @@ import {
   getAllUserPlaylists,
   getAllPlaylistTracks,
   getSpotifyProfile,
+  createPlaylist,
+  addTracksToPlaylist,
 } from "../services/spotifyClient";
 import { config } from "../config";
+import { CreatePlaylistBodySchema } from "@dj-assistant/types";
 
 const router = Router();
 
@@ -27,9 +30,12 @@ router.get("/connect", requireAuth, (req: Request, res: Response) => {
     response_type: "code",
     client_id: config.SPOTIFY_CLIENT_ID,
     redirect_uri: config.SPOTIFY_REDIRECT_URI,
-    scope: "playlist-read-private playlist-read-collaborative",
+    scope: "playlist-read-private playlist-read-collaborative playlist-modify-private",
     state,
-    show_dialog: "false",
+    // Force the consent screen every time so a scope change (e.g. adding
+    // playlist-modify-private) is actually re-approved instead of silently
+    // reusing a prior, narrower grant.
+    show_dialog: "true",
   });
 
   res.json({ url: `https://accounts.spotify.com/authorize?${params.toString()}` });
@@ -148,5 +154,32 @@ router.get(
     }
   }
 );
+
+router.post("/playlists", requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = (req as AuthRequest).userId;
+    const body = CreatePlaylistBodySchema.parse(req.body);
+
+    const conn = await PlatformConnection.findOne({ userId, platform: "spotify" });
+    if (!conn || !conn.spotifyUserId) {
+      res.status(400).json({ error: "Spotify not connected" });
+      return;
+    }
+
+    const name =
+      body.name ?? `Uncategorized – ${new Date().toISOString().slice(0, 19).replace("T", " ")}`;
+
+    const playlist = await createPlaylist(userId, conn.spotifyUserId, name);
+    await addTracksToPlaylist(userId, playlist.id, body.trackIds);
+
+    res.status(201).json({
+      id: playlist.id,
+      name,
+      url: playlist.external_urls.spotify,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
 
 export default router;

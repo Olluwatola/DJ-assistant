@@ -50,6 +50,14 @@ async function spotifyGet<T>(userId: string, path: string, params?: Record<strin
   return data;
 }
 
+async function spotifyPost<T>(userId: string, path: string, body: unknown): Promise<T> {
+  const token = await getValidAccessToken(userId);
+  const { data } = await axios.post<T>(`${SPOTIFY_API}${path}`, body, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return data;
+}
+
 interface SpotifyPaginated<T> {
   items: T[];
   next: string | null;
@@ -150,4 +158,26 @@ export async function batchAudioFeatures(userId: string, trackIds: string[]) {
 
 export async function getSpotifyProfile(userId: string) {
   return spotifyGet<{ id: string; display_name: string }>(userId, "/me");
+}
+
+interface SpotifyNewPlaylist {
+  id: string;
+  external_urls: { spotify: string };
+}
+
+export async function createPlaylist(userId: string, spotifyUserId: string, name: string) {
+  return spotifyPost<SpotifyNewPlaylist>(userId, `/users/${spotifyUserId}/playlists`, {
+    name,
+    public: false,
+  });
+}
+
+export async function addTracksToPlaylist(userId: string, playlistId: string, trackIds: string[]) {
+  const uris = trackIds.map((id) => `spotify:track:${id}`);
+  const chunkSize = 100;
+
+  for (let i = 0; i < uris.length; i += chunkSize) {
+    const chunk = uris.slice(i, i + chunkSize);
+    await spotifyPost(userId, `/playlists/${playlistId}/tracks`, { uris: chunk });
+  }
 }

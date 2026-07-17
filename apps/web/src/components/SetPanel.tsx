@@ -17,6 +17,7 @@ interface Props {
   tracks: SetTrack[];
   isDirty: boolean;
   audioFeaturesMap: Map<string, AudioFeatures>;
+  width: number;
   onNameChange: (name: string) => void;
   onReorder: (oldIndex: number, newIndex: number) => void;
   onRemove: (index: number) => void;
@@ -28,6 +29,7 @@ export default function SetPanel({
   tracks,
   isDirty,
   audioFeaturesMap,
+  width,
   onNameChange,
   onReorder,
   onRemove,
@@ -73,7 +75,10 @@ export default function SetPanel({
   const sortableIds = tracks.map((t, i) => `${t.platform}:${t.platformTrackId}:${i}`);
 
   return (
-    <aside className="w-72 flex-shrink-0 bg-gray-900 rounded-xl flex flex-col h-full max-h-[calc(100vh-8rem)]">
+    <aside
+      style={{ width }}
+      className="flex-shrink-0 bg-gray-900 rounded-xl flex flex-col h-full max-h-[calc(100vh-8rem)]"
+    >
       {/* Header */}
       <div className="p-4 border-b border-gray-800">
         <input

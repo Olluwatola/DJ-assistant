@@ -80,6 +80,36 @@ export function useLibrary() {
     return m;
   }, [rawMap, songBoxQueries, songBoxIds]);
 
+  // Song-box tracks that aren't in any base playlist — dropped from enrichedMap,
+  // surfaced separately so they don't affect the core AND-filter hashmap
+  const orphanMap = useMemo(() => {
+    const map = new Map<string, Omit<Track, "audioFeatures"> & { audioFeatures: null }>();
+    songBoxQueries.forEach((q, i) => {
+      const pid = songBoxIds[i];
+      q.data?.forEach((t) => {
+        const key = `spotify:${t.id}`;
+        if (rawMap.has(key)) return;
+        const existing = map.get(key);
+        if (existing) {
+          if (!existing.playlistIds.includes(pid)) existing.playlistIds.push(pid);
+        } else {
+          map.set(key, {
+            id: t.id,
+            platform: "spotify",
+            namespaceId: key,
+            title: t.title,
+            artist: t.artist,
+            albumArt: t.albumArt,
+            durationMs: t.durationMs,
+            playlistIds: [pid],
+            audioFeatures: null,
+          });
+        }
+      });
+    });
+    return map;
+  }, [rawMap, songBoxQueries, songBoxIds]);
+
   const allTrackIds = useMemo(
     () => [...enrichedMap.keys()].map((k) => k.split(":")[1]),
     [enrichedMap]
@@ -90,11 +120,35 @@ export function useLibrary() {
     [enrichedMap]
   );
 
-  const { data: audioFeaturesData, isLoading: featuresLoading } = useQuery({
+  const orphanTrackIds = useMemo(
+    () => [...orphanMap.keys()].map((k) => k.split(":")[1]),
+    [orphanMap]
+  );
+
+  const orphanTrackLookups = useMemo(
+    () => [...orphanMap.values()].map((t) => ({ id: t.id, title: t.title, artist: t.artist })),
+    [orphanMap]
+  );
+
+  const baseFeaturesQuery = useQuery({
     // Use a stable sorted copy for the key so it doesn't vary with insertion order
-    queryKey: ["audio-features", [...allTrackIds].sort().join(",")],
+    queryKey: ["audio-features", "base", [...allTrackIds].sort().join(",")],
     queryFn: () => spotifyApi.getAudioFeatures(trackLookups),
     enabled: trackLookups.length > 0,
+    staleTime: Infinity,
+  });
+  const { data: audioFeaturesData, isLoading: featuresLoading } = baseFeaturesQuery;
+
+  // Orphan BPM/key lookups must never race the real library's — only start once
+  // the base fetch has settled (succeeded, errored, or had nothing to fetch)
+  const baseFeaturesSettled =
+    !baseFeaturesQuery.isFetching &&
+    (baseFeaturesQuery.isSuccess || baseFeaturesQuery.isError || trackLookups.length === 0);
+
+  const orphanFeaturesQuery = useQuery({
+    queryKey: ["audio-features", "orphan", [...orphanTrackIds].sort().join(",")],
+    queryFn: () => spotifyApi.getAudioFeatures(orphanTrackLookups),
+    enabled: orphanTrackLookups.length > 0 && baseFeaturesSettled,
     staleTime: Infinity,
   });
 
@@ -106,6 +160,14 @@ export function useLibrary() {
     }));
   }, [enrichedMap, audioFeaturesData]);
 
+  const orphanedTracks: Track[] = useMemo(() => {
+    const featureMap = new Map(orphanFeaturesQuery.data?.map((f) => [f.trackId, f]) ?? []);
+    return [...orphanMap.values()].map((t) => ({
+      ...t,
+      audioFeatures: featureMap.get(t.id) ?? null,
+    }));
+  }, [orphanMap, orphanFeaturesQuery.data]);
+
   const isLoading =
     desLoading ||
     baseQueries.some((q) => q.isLoading) ||
@@ -114,10 +176,14 @@ export function useLibrary() {
   // True while the batch audio-features request is in flight
   const isFeaturesLoading = allTrackIds.length > 0 && featuresLoading;
 
+  // True while the deferred orphan audio-features request is in flight
+  const isOrphanFeaturesLoading = orphanTrackIds.length > 0 && orphanFeaturesQuery.isLoading;
+
   function refresh() {
     qc.invalidateQueries({ queryKey: ["playlist-tracks"] });
+    // Prefix-matches both ["audio-features","base",...] and ["audio-features","orphan",...]
     qc.invalidateQueries({ queryKey: ["audio-features"] });
   }
 
-  return { tracks, isLoading, isFeaturesLoading, refresh };
+  return { tracks, isLoading, isFeaturesLoading, orphanedTracks, isOrphanFeaturesLoading, refresh };
 }

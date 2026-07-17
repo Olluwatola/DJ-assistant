@@ -99,7 +99,15 @@ export default function Settings() {
                   )}
                 </div>
               </div>
-              {!status?.connected && (
+              {status?.connected ? (
+                <button
+                  onClick={handleConnectSpotify}
+                  className="px-4 py-1.5 bg-gray-800 hover:bg-gray-700 text-sm rounded-lg transition-colors text-gray-300"
+                  title="Reconnect to grant any newly-added permissions"
+                >
+                  Reconnect
+                </button>
+              ) : (
                 <button
                   onClick={handleConnectSpotify}
                   className="px-4 py-1.5 bg-green-600 hover:bg-green-500 text-sm rounded-lg transition-colors"

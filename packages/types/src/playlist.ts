@@ -25,6 +25,19 @@ export const UpsertDesignationBodySchema = z.object({
   type: DesignationTypeEnum,
 });
 
+export const CreatePlaylistBodySchema = z.object({
+  trackIds: z.array(z.string()).min(1),
+  name: z.string().optional(),
+});
+
+export const CreatePlaylistResponseSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  url: z.string(),
+});
+
 export type Playlist = z.infer<typeof PlaylistSchema>;
 export type PlaylistDesignation = z.infer<typeof PlaylistDesignationSchema>;
 export type UpsertDesignationBody = z.infer<typeof UpsertDesignationBodySchema>;
+export type CreatePlaylistBody = z.infer<typeof CreatePlaylistBodySchema>;
+export type CreatePlaylistResponse = z.infer<typeof CreatePlaylistResponseSchema>;

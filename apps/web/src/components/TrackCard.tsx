@@ -7,11 +7,13 @@ export interface TrackCardProps {
   onAdd: () => void;
   energyLabel?: string | null;
   songBoxLabels?: string[];
+  featuresLoading?: boolean;
 }
 
-export default function TrackCard({ track, onAdd, energyLabel, songBoxLabels }: TrackCardProps) {
+export default function TrackCard({ track, onAdd, energyLabel, songBoxLabels, featuresLoading }: TrackCardProps) {
+  const featuresPending = !track.audioFeatures && featuresLoading;
   return (
-    <div className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-gray-800 group transition-colors">
+    <div className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-gray-800 group transition-colors min-h-[4.75rem]">
       {track.albumArt ? (
         <img src={track.albumArt} alt="" className="w-10 h-10 rounded object-cover flex-shrink-0" />
       ) : (
@@ -21,7 +23,7 @@ export default function TrackCard({ track, onAdd, energyLabel, songBoxLabels }: 
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-white truncate">{track.title}</p>
         <p className="text-xs text-gray-400 truncate">{track.artist}</p>
-        <div className="flex items-center gap-2 mt-1 flex-wrap">
+        <div className="flex items-center gap-2 mt-1 flex-wrap min-h-[1.25rem]">
           <PlatformBadge platform={track.platform} />
           {energyLabel && (
             <span className="text-xs text-blue-400">{energyLabel}</span>
@@ -39,10 +41,16 @@ export default function TrackCard({ track, onAdd, energyLabel, songBoxLabels }: 
 
       <div className="flex items-center gap-3 flex-shrink-0 text-right">
         <div className="hidden sm:block text-right">
-          <p className="text-xs text-gray-300 font-mono">
-            {track.audioFeatures?.bpm != null ? `${Math.round(track.audioFeatures.bpm)} BPM` : "—"}
-          </p>
-          <KeyDisplay keyInt={track.audioFeatures?.key} mode={track.audioFeatures?.mode} />
+          {featuresPending ? (
+            <p className="text-xs text-gray-600 animate-pulse">loading…</p>
+          ) : (
+            <>
+              <p className="text-xs text-gray-300 font-mono">
+                {track.audioFeatures?.bpm != null ? `${Math.round(track.audioFeatures.bpm)} BPM` : "—"}
+              </p>
+              <KeyDisplay keyInt={track.audioFeatures?.key} mode={track.audioFeatures?.mode} />
+            </>
+          )}
         </div>
         <button
           onClick={onAdd}
