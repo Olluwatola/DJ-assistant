@@ -25,6 +25,22 @@ export async function getCachedAudioFeatures(ids: string[]): Promise<AudioFeatur
   return data;
 }
 
+export interface CachedTrackData {
+  trackId: string;
+  bpm: number | null;
+  key: number | null;
+  mode: number | null;
+  previewUrl: string | null;
+}
+
+export async function getCachedTrackData(ids: string[]): Promise<CachedTrackData[]> {
+  if (ids.length === 0) return [];
+  const { data } = await client.get<CachedTrackData[]>("/track-data/cache", {
+    params: { ids: ids.join(",") },
+  });
+  return data;
+}
+
 export async function getMissingTrackData(): Promise<MissingTrackData[]> {
   const { data } = await client.get<MissingTrackData[]>("/track-data/missing");
   return data;

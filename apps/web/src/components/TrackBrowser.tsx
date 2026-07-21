@@ -10,8 +10,12 @@ interface Props {
   selectedFilterIds: string[];
   bpmRange: BpmRange;
   selectedKeys: number[];
+  searchQuery: string;
+  onSearchChange: (query: string) => void;
   designations: PlaylistDesignation[];
   onAddTrack: (track: Track) => void;
+  playingId: string | null;
+  onTogglePreview: (id: string, url: string | null) => void;
 }
 
 function applyFilters(
@@ -19,9 +23,17 @@ function applyFilters(
   selectedFilterIds: string[],
   bpmRange: BpmRange,
   selectedKeys: number[],
+  searchQuery: string,
   isFeaturesLoading: boolean
 ): Track[] {
+  const query = searchQuery.trim().toLowerCase();
+
   return tracks.filter((t) => {
+    // Text search over title/artist
+    if (query && !t.title.toLowerCase().includes(query) && !t.artist.toLowerCase().includes(query)) {
+      return false;
+    }
+
     // Playlist AND filter
     if (selectedFilterIds.length > 0 && !selectedFilterIds.every((pid) => t.playlistIds.includes(pid))) {
       return false;
@@ -57,16 +69,21 @@ export default function TrackBrowser({
   selectedFilterIds,
   bpmRange,
   selectedKeys,
+  searchQuery,
+  onSearchChange,
   designations,
   onAddTrack,
+  playingId,
+  onTogglePreview,
 }: Props) {
-  const filtered = applyFilters(tracks, selectedFilterIds, bpmRange, selectedKeys, isFeaturesLoading);
+  const filtered = applyFilters(tracks, selectedFilterIds, bpmRange, selectedKeys, searchQuery, isFeaturesLoading);
 
   const isFiltered =
     selectedFilterIds.length > 0 ||
     bpmRange.min !== null ||
     bpmRange.max !== null ||
-    selectedKeys.length > 0;
+    selectedKeys.length > 0 ||
+    searchQuery.trim() !== "";
 
   if (isLoading) {
     return (
@@ -90,16 +107,41 @@ export default function TrackBrowser({
     );
   }
 
+  const searchBox = (
+    <div className="relative mb-2 px-1 flex-shrink-0">
+      <input
+        type="text"
+        value={searchQuery}
+        onChange={(e) => onSearchChange(e.target.value)}
+        placeholder="Search tracks…"
+        className="w-full px-2 py-1.5 bg-gray-800 border border-gray-700 rounded text-sm text-white placeholder-gray-600 focus:outline-none focus:border-green-500"
+      />
+      {searchQuery && (
+        <button
+          onClick={() => onSearchChange("")}
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white text-sm"
+          title="Clear search"
+        >
+          ×
+        </button>
+      )}
+    </div>
+  );
+
   if (filtered.length === 0) {
     return (
-      <div className="flex-1 flex items-center justify-center text-gray-600">
-        <p>No tracks match your filters.</p>
+      <div className="flex-1 flex flex-col overflow-y-auto pr-1">
+        {searchBox}
+        <div className="flex-1 flex items-center justify-center text-gray-600">
+          <p>No tracks match your filters.</p>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="flex-1 overflow-y-auto space-y-0.5 pr-1">
+      {searchBox}
       <p className="text-xs text-gray-600 mb-2 px-1">
         {filtered.length} track{filtered.length !== 1 ? "s" : ""}
         {isFiltered ? ` of ${tracks.length}` : ""}
@@ -108,10 +150,12 @@ export default function TrackBrowser({
         <TrackCard
           key={track.namespaceId}
           track={track}
-          energyLabel={getEnergyLabel(track, designations)}
-          songBoxLabels={getSongBoxLabels(track, designations)}
+          energyLabel={getEnergyLabel(track.playlistIds, designations)}
+          songBoxLabels={getSongBoxLabels(track.playlistIds, designations)}
           featuresLoading={isFeaturesLoading}
           onAdd={() => onAddTrack(track)}
+          isPlaying={playingId === track.id}
+          onTogglePreview={() => onTogglePreview(track.id, track.previewUrl)}
         />
       ))}
     </div>

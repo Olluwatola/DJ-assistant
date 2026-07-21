@@ -6,6 +6,7 @@ export interface ITrackAudioFeatures extends Document {
   bpm: number | null;
   key: number | null;
   mode: number | null;
+  previewUrl: string | null;
   source: "chosic" | "deezer_reccobeats";
   fetchedAt: Date;
 }
@@ -16,6 +17,7 @@ const TrackAudioFeaturesSchema = new Schema<ITrackAudioFeatures>({
   bpm: { type: Number, default: null },
   key: { type: Number, default: null },
   mode: { type: Number, default: null },
+  previewUrl: { type: String, default: null },
   source: { type: String, enum: ["chosic", "deezer_reccobeats"], required: true },
   fetchedAt: { type: Date, default: Date.now },
 });

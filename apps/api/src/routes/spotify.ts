@@ -147,6 +147,7 @@ router.get(
         artist: t!.artists.map((a) => a.name).join(", "),
         albumArt: t!.album.images?.[0]?.url ?? null,
         durationMs: t!.duration_ms,
+        previewUrl: t!.preview_url ?? null,
       }));
       res.json(tracks);
     } catch (err) {

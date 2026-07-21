@@ -101,7 +101,7 @@ async function fetchWithRetry(url: string): Promise<Response | null> {
   return null;
 }
 
-async function getDeezerBpm(track: TrackLookup): Promise<number | null> {
+export async function searchDeezerTrack(track: TrackLookup): Promise<DeezerSearchResult | null> {
   try {
     const q = encodeURIComponent(`artist:"${track.artist}" track:"${track.title}"`);
     const searchRes = await fetchWithRetry(`/deezer/search/track?q=${q}&limit=5`);
@@ -110,20 +110,25 @@ async function getDeezerBpm(track: TrackLookup): Promise<number | null> {
 
     const titleLow = track.title.toLowerCase();
     const artistLow = track.artist.toLowerCase();
-    const match =
+    return (
       data.find((r) => r.title.toLowerCase() === titleLow && r.artist.name.toLowerCase() === artistLow) ??
       data.find((r) => r.title.toLowerCase() === titleLow) ??
-      data[0];
-
-    if (!match) return null;
-
-    const detailRes = await fetchWithRetry(`/deezer/track/${match.id}`);
-    if (!detailRes?.ok) return null;
-    const detail: { bpm: number } = await detailRes.json();
-    return detail.bpm > 0 ? Math.round(detail.bpm) : null;
+      data[0] ??
+      null
+    );
   } catch {
     return null;
   }
+}
+
+async function getDeezerBpm(track: TrackLookup): Promise<number | null> {
+  const match = await searchDeezerTrack(track);
+  if (!match) return null;
+
+  const detailRes = await fetchWithRetry(`/deezer/track/${match.id}`);
+  if (!detailRes?.ok) return null;
+  const detail: { bpm: number } = await detailRes.json();
+  return detail.bpm > 0 ? Math.round(detail.bpm) : null;
 }
 
 async function fetchDeezerFallback(tracks: TrackLookup[]): Promise<AudioFeatures[]> {

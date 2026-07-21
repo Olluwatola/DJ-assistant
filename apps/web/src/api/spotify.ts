@@ -12,6 +12,7 @@ export interface RawTrack {
   artist: string;
   albumArt: string | null;
   durationMs: number;
+  previewUrl: string | null;
 }
 
 export async function getStatus(): Promise<SpotifyStatus> {

@@ -59,7 +59,13 @@ router.get("/cache", requireAuth, async (req: Request, res: Response, next: Next
     res.json(
       ids.map((id) => {
         const c = byId.get(id);
-        return { trackId: id, bpm: c?.bpm ?? null, key: c?.key ?? null, mode: c?.mode ?? null };
+        return {
+          trackId: id,
+          bpm: c?.bpm ?? null,
+          key: c?.key ?? null,
+          mode: c?.mode ?? null,
+          previewUrl: c?.previewUrl ?? null,
+        };
       })
     );
   } catch (err) {
@@ -131,10 +137,17 @@ router.post("/chosic-run", requireAuth, async (req: Request, res: Response, next
 
         let tracksCached = 0;
         for (const t of tracks) {
-          if (t.bpm === null) continue;
+          if (t.bpm === null && t.previewUrl === null) continue;
           await TrackAudioFeatures.findOneAndUpdate(
             { platform: "spotify", platformTrackId: t.id },
-            { bpm: t.bpm, key: t.key, mode: t.mode, source: "chosic", fetchedAt: new Date() },
+            {
+              bpm: t.bpm,
+              key: t.key,
+              mode: t.mode,
+              previewUrl: t.previewUrl,
+              source: "chosic",
+              fetchedAt: new Date(),
+            },
             { upsert: true }
           );
           tracksCached++;

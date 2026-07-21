@@ -3,6 +3,7 @@ import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useDesignations } from "./useDesignations";
 import { useTrackDetailMode } from "./useTrackData";
 import * as spotifyApi from "../api/spotify";
+import { getPreviewUrls } from "../api/previewUrl";
 import type { Track } from "@dj-assistant/types";
 
 const STALE = 20 * 60 * 1000;
@@ -57,6 +58,7 @@ export function useLibrary() {
             artist: t.artist,
             albumArt: t.albumArt,
             durationMs: t.durationMs,
+            previewUrl: t.previewUrl,
             playlistIds: [pid],
             audioFeatures: null,
           });
@@ -103,6 +105,7 @@ export function useLibrary() {
             artist: t.artist,
             albumArt: t.albumArt,
             durationMs: t.durationMs,
+            previewUrl: t.previewUrl,
             playlistIds: [pid],
             audioFeatures: null,
           });
@@ -131,6 +134,27 @@ export function useLibrary() {
     () => [...orphanMap.values()].map((t) => ({ id: t.id, title: t.title, artist: t.artist })),
     [orphanMap]
   );
+
+  const allTrackLookups = useMemo(
+    () => [...trackLookups, ...orphanTrackLookups],
+    [trackLookups, orphanTrackLookups]
+  );
+
+  // Gated on every playlist-tracks query having settled, not just
+  // allTrackLookups being non-empty - otherwise, with many designated playlists
+  // resolving at different times, the track-id set (and therefore this query's
+  // key) keeps growing as each one lands, restarting the slow sequential Deezer
+  // fetch from scratch every time instead of letting one pass finish.
+  const previewQuery = useQuery({
+    queryKey: ["preview-urls", [...allTrackIds, ...orphanTrackIds].sort().join(",")],
+    queryFn: () => getPreviewUrls(allTrackLookups),
+    enabled:
+      allTrackLookups.length > 0 &&
+      !desLoading &&
+      baseQueries.every((q) => !q.isLoading) &&
+      songBoxQueries.every((q) => !q.isLoading),
+    staleTime: Infinity,
+  });
 
   const baseFeaturesQuery = useQuery({
     // Use a stable sorted copy for the key so it doesn't vary with insertion order
@@ -166,16 +190,18 @@ export function useLibrary() {
     return [...enrichedMap.values()].map((t) => ({
       ...t,
       audioFeatures: featureMap.get(t.id) ?? null,
+      previewUrl: previewQuery.data?.get(t.id) ?? t.previewUrl,
     }));
-  }, [enrichedMap, audioFeaturesData]);
+  }, [enrichedMap, audioFeaturesData, previewQuery.data]);
 
   const orphanedTracks: Track[] = useMemo(() => {
     const featureMap = new Map(orphanFeaturesQuery.data?.map((f) => [f.trackId, f]) ?? []);
     return [...orphanMap.values()].map((t) => ({
       ...t,
       audioFeatures: featureMap.get(t.id) ?? null,
+      previewUrl: previewQuery.data?.get(t.id) ?? t.previewUrl,
     }));
-  }, [orphanMap, orphanFeaturesQuery.data]);
+  }, [orphanMap, orphanFeaturesQuery.data, previewQuery.data]);
 
   const isLoading =
     desLoading ||

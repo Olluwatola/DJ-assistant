@@ -5,6 +5,7 @@ import {
   Outlet,
   redirect,
 } from "@tanstack/react-router";
+import { z } from "zod";
 import { getToken } from "./lib/auth";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -29,10 +30,15 @@ const settingsRoute = createRoute({
   component: Settings,
 });
 
+const builderSearchSchema = z.object({
+  setId: z.string().optional(),
+});
+
 const builderRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/builder",
   beforeLoad: requireLogin,
+  validateSearch: builderSearchSchema,
   component: Builder,
 });
 

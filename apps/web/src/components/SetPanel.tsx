@@ -10,13 +10,20 @@ import {
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import type { SetTrack } from "@dj-assistant/types";
 import type { AudioFeatures } from "@dj-assistant/types";
+import type { PlaylistDesignation } from "@dj-assistant/types";
 import SetTrackRow from "./SetTrackRow";
+import { getBaseLabels, getSongBoxLabels } from "../lib/trackLabels";
 
 interface Props {
   name: string;
   tracks: SetTrack[];
   isDirty: boolean;
   audioFeaturesMap: Map<string, AudioFeatures>;
+  playlistIdsMap: Map<string, string[]>;
+  previewUrlMap: Map<string, string | null>;
+  designations: PlaylistDesignation[];
+  playingId: string | null;
+  onTogglePreview: (id: string, url: string | null) => void;
   width: number;
   onNameChange: (name: string) => void;
   onReorder: (oldIndex: number, newIndex: number) => void;
@@ -29,6 +36,11 @@ export default function SetPanel({
   tracks,
   isDirty,
   audioFeaturesMap,
+  playlistIdsMap,
+  previewUrlMap,
+  designations,
+  playingId,
+  onTogglePreview,
   width,
   onNameChange,
   onReorder,
@@ -101,15 +113,24 @@ export default function SetPanel({
         ) : (
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
-              {tracks.map((t, i) => (
-                <SetTrackRow
-                  key={`${t.platform}:${t.platformTrackId}:${i}`}
-                  track={t}
-                  index={i}
-                  features={audioFeaturesMap.get(t.platformTrackId)}
-                  onRemove={() => onRemove(i)}
-                />
-              ))}
+              {tracks.map((t, i) => {
+                const playlistIds = playlistIdsMap.get(t.platformTrackId) ?? [];
+                const previewUrl = previewUrlMap.get(t.platformTrackId) ?? null;
+                return (
+                  <SetTrackRow
+                    key={`${t.platform}:${t.platformTrackId}:${i}`}
+                    track={t}
+                    index={i}
+                    features={audioFeaturesMap.get(t.platformTrackId)}
+                    baseLabels={getBaseLabels(playlistIds, designations)}
+                    songBoxLabels={getSongBoxLabels(playlistIds, designations)}
+                    previewUrl={previewUrl}
+                    isPlaying={playingId === t.platformTrackId}
+                    onTogglePreview={() => onTogglePreview(t.platformTrackId, previewUrl)}
+                    onRemove={() => onRemove(i)}
+                  />
+                );
+              })}
             </SortableContext>
           </DndContext>
         )}

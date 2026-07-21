@@ -1,8 +1,9 @@
-import { useState, useMemo } from "react";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { useState, useMemo, useEffect } from "react";
+import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useLibrary } from "../hooks/useLibrary";
 import { useActiveSet } from "../hooks/useActiveSet";
 import { useDesignations } from "../hooks/useDesignations";
+import { usePreviewPlayer } from "../hooks/usePreviewPlayer";
 import FilterPanel, { type BpmRange } from "../components/FilterPanel";
 import TrackBrowser from "../components/TrackBrowser";
 import OrphanedTracksPanel from "../components/OrphanedTracksPanel";
@@ -13,10 +14,12 @@ import type { AudioFeatures } from "@dj-assistant/types";
 
 export default function Builder() {
   const navigate = useNavigate();
+  const { setId } = useSearch({ strict: false }) as { setId?: string };
 
   const [selectedFilterIds, setSelectedFilterIds] = useState<string[]>([]);
   const [bpmRange, setBpmRange] = useState<BpmRange>({ min: null, max: null });
   const [selectedKeys, setSelectedKeys] = useState<number[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
   const [setPanelWidth, setSetPanelWidth] = useState(420);
 
   const SET_PANEL_MIN_WIDTH = 300;
@@ -32,6 +35,12 @@ export default function Builder() {
   const { tracks, isLoading, isFeaturesLoading, orphanedTracks, isOrphanFeaturesLoading, refresh } = useLibrary();
   const { data: designations } = useDesignations();
   const activeSet = useActiveSet();
+  const { playingId, toggle: onTogglePreview } = usePreviewPlayer();
+
+  const { loadSet } = activeSet;
+  useEffect(() => {
+    if (setId) loadSet(setId);
+  }, [setId, loadSet]);
 
   const audioFeaturesMap = useMemo(() => {
     const m = new Map<string, AudioFeatures>();
@@ -40,6 +49,18 @@ export default function Builder() {
     });
     return m;
   }, [tracks]);
+
+  const playlistIdsMap = useMemo(() => {
+    const m = new Map<string, string[]>();
+    [...tracks, ...orphanedTracks].forEach((t) => m.set(t.id, t.playlistIds));
+    return m;
+  }, [tracks, orphanedTracks]);
+
+  const previewUrlMap = useMemo(() => {
+    const m = new Map<string, string | null>();
+    [...tracks, ...orphanedTracks].forEach((t) => m.set(t.id, t.previewUrl));
+    return m;
+  }, [tracks, orphanedTracks]);
 
   function toggleFilter(id: string) {
     setSelectedFilterIds((prev) =>
@@ -117,6 +138,8 @@ export default function Builder() {
             designations={designations ?? []}
             isFeaturesLoading={isOrphanFeaturesLoading}
             onAddTrack={activeSet.addTrack}
+            playingId={playingId}
+            onTogglePreview={onTogglePreview}
           />
           <TrackBrowser
             tracks={tracks}
@@ -125,8 +148,12 @@ export default function Builder() {
             selectedFilterIds={selectedFilterIds}
             bpmRange={bpmRange}
             selectedKeys={selectedKeys}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
             designations={designations ?? []}
             onAddTrack={activeSet.addTrack}
+            playingId={playingId}
+            onTogglePreview={onTogglePreview}
           />
         </div>
 
@@ -137,6 +164,11 @@ export default function Builder() {
           tracks={activeSet.tracks}
           isDirty={activeSet.isDirty}
           audioFeaturesMap={audioFeaturesMap}
+          playlistIdsMap={playlistIdsMap}
+          previewUrlMap={previewUrlMap}
+          designations={designations ?? []}
+          playingId={playingId}
+          onTogglePreview={onTogglePreview}
           width={setPanelWidth}
           onNameChange={activeSet.setName}
           onReorder={activeSet.reorderTracks}

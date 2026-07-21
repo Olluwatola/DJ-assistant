@@ -8,17 +8,40 @@ export interface TrackCardProps {
   energyLabel?: string | null;
   songBoxLabels?: string[];
   featuresLoading?: boolean;
+  isPlaying: boolean;
+  onTogglePreview: () => void;
 }
 
-export default function TrackCard({ track, onAdd, energyLabel, songBoxLabels, featuresLoading }: TrackCardProps) {
+export default function TrackCard({
+  track,
+  onAdd,
+  energyLabel,
+  songBoxLabels,
+  featuresLoading,
+  isPlaying,
+  onTogglePreview,
+}: TrackCardProps) {
   const featuresPending = !track.audioFeatures && featuresLoading;
   return (
     <div className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-gray-800 group transition-colors min-h-[4.75rem]">
-      {track.albumArt ? (
-        <img src={track.albumArt} alt="" className="w-10 h-10 rounded object-cover flex-shrink-0" />
-      ) : (
-        <div className="w-10 h-10 rounded bg-gray-700 flex-shrink-0" />
-      )}
+      <div className="relative w-10 h-10 flex-shrink-0">
+        {track.albumArt ? (
+          <img src={track.albumArt} alt="" className="w-10 h-10 rounded object-cover" />
+        ) : (
+          <div className="w-10 h-10 rounded bg-gray-700" />
+        )}
+        {track.previewUrl && (
+          <button
+            onClick={onTogglePreview}
+            className={`absolute inset-0 flex items-center justify-center rounded bg-black/60 text-white text-sm transition-opacity ${
+              isPlaying ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+            }`}
+            title={isPlaying ? "Pause preview" : "Play preview"}
+          >
+            {isPlaying ? "⏸" : "▶"}
+          </button>
+        )}
+      </div>
 
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-white truncate">{track.title}</p>

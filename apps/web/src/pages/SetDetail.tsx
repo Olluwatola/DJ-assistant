@@ -43,7 +43,7 @@ export default function SetDetail() {
   }, [featuresData]);
 
   function handleEditInBuilder() {
-    navigate({ to: "/builder" });
+    navigate({ to: "/builder", search: { setId: id } });
   }
 
   function handleLogout() {

@@ -93,6 +93,7 @@ interface SpotifyPlaylistItem {
     artists: Array<{ name: string }>;
     album: { images: Array<{ url: string }> };
     duration_ms: number;
+    preview_url: string | null;
   } | null;
 }
 

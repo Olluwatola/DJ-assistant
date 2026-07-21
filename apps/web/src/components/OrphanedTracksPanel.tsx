@@ -9,9 +9,18 @@ interface Props {
   designations: PlaylistDesignation[];
   isFeaturesLoading: boolean;
   onAddTrack: (track: Track) => void;
+  playingId: string | null;
+  onTogglePreview: (id: string, url: string | null) => void;
 }
 
-export default function OrphanedTracksPanel({ tracks, designations, isFeaturesLoading, onAddTrack }: Props) {
+export default function OrphanedTracksPanel({
+  tracks,
+  designations,
+  isFeaturesLoading,
+  onAddTrack,
+  playingId,
+  onTogglePreview,
+}: Props) {
   const [expanded, setExpanded] = useState(false);
   const [creating, setCreating] = useState(false);
   const [createdPlaylist, setCreatedPlaylist] = useState<{ name: string; url: string } | null>(null);
@@ -97,9 +106,11 @@ export default function OrphanedTracksPanel({ tracks, designations, isFeaturesLo
               key={track.namespaceId}
               track={track}
               energyLabel={null}
-              songBoxLabels={getSongBoxLabels(track, designations)}
+              songBoxLabels={getSongBoxLabels(track.playlistIds, designations)}
               featuresLoading={isFeaturesLoading}
               onAdd={() => onAddTrack(track)}
+              isPlaying={playingId === track.id}
+              onTogglePreview={() => onTogglePreview(track.id, track.previewUrl)}
             />
           ))}
         </div>

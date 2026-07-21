@@ -17,6 +17,7 @@ export interface ChosicScrapedTrack {
   bpm: number | null;
   key: number | null;
   mode: number | null;
+  previewUrl: string | null;
 }
 
 export interface ChosicScrapeResult {
@@ -35,6 +36,7 @@ interface SpotifyAudioFeature {
 interface SpotifyTrack {
   id: string;
   type: string;
+  preview_url: string | null;
 }
 
 interface SpotifyPlaylistItem {
@@ -184,6 +186,7 @@ async function attemptScrape(playlistId: string): Promise<ChosicScrapeResult> {
         bpm: audioFeatures?.tempo ?? null,
         key: audioFeatures?.key ?? null,
         mode: audioFeatures?.mode ?? null,
+        previewUrl: track.preview_url ?? null,
       };
     });
 
